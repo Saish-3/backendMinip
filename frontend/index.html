@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RailPulse — Smart Railway Operations & Passenger Portal</title>
+  <meta name="description" content="Next-generation railway operations, real-time train tracking, instant ticket booking, PNR inquiry, and administrative intelligence platform." />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Main App Shell -->
+  <div class="app-shell">
+    
+    <!-- ─── TOP NAVIGATION BAR ─────────────────────────────────────────── -->
+    <header class="navbar">
+      <div class="nav-container">
+        
+        <!-- Logo & Brand -->
+        <div class="nav-brand" onclick="switchTab('booking-tab')">
+          <div class="brand-icon-wrapper">
+            <span class="brand-icon">🚆</span>
+            <span class="live-dot" title="Server Connected"></span>
+          </div>
+          <div class="brand-text">
+            <div class="brand-title">RailPulse <span class="badge-pro">PRO</span></div>
+            <div class="brand-subtitle">Smart Railway Operations</div>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-links" id="main-nav">
+          <button class="nav-link active" data-tab="booking-tab" onclick="switchTab('booking-tab')">
+            <span class="nav-icon">🔍</span> Search & Book
+          </button>
+          <button class="nav-link" data-tab="tracking-tab" onclick="switchTab('tracking-tab')">
+            <span class="nav-icon">📡</span> Live Radar
+          </button>
+          <button class="nav-link" data-tab="pnr-tab" onclick="switchTab('pnr-tab')">
+            <span class="nav-icon">🎟️</span> PNR Status
+          </button>
+          <button class="nav-link" data-tab="my-bookings-tab" onclick="switchTab('my-bookings-tab')">
+            <span class="nav-icon">📋</span> My Journeys
+          </button>
+          <button class="nav-link" data-tab="passengers-tab" onclick="switchTab('passengers-tab')">
+            <span class="nav-icon">👥</span> Passengers
+          </button>
+          <button class="nav-link admin-only" data-tab="admin-tab" onclick="switchTab('admin-tab')" id="admin-nav-btn">
+            <span class="nav-icon">⚡</span> Admin Ops
+          </button>
+        </nav>
+
+        <!-- Right Side Actions -->
+        <div class="nav-actions">
+          
+          <!-- Quick Demo Switcher -->
+          <div class="dropdown demo-switcher">
+            <button class="btn btn-glass btn-sm" id="demo-menu-btn" onclick="toggleDropdown('demo-dropdown')">
+              <span>🎭 Demo Logins</span>
+              <span class="arrow-down">▾</span>
+            </button>
+            <div class="dropdown-menu" id="demo-dropdown">
+              <div class="dropdown-header">Quick Switch Account</div>
+              <button class="dropdown-item" onclick="quickLogin('passenger')">
+                <span class="role-pill passenger">Passenger</span>
+                <div class="drop-info">
+                  <strong>Rahul Verma</strong>
+                  <small>rahul@gmail.com</small>
+                </div>
+              </button>
+              <button class="dropdown-item" onclick="quickLogin('staff')">
+                <span class="role-pill staff">Staff</span>
+                <div class="drop-info">
+                  <strong>SM Sharma</strong>
+                  <small>staff@railway.gov.in</small>
+                </div>
+              </button>
+              <button class="dropdown-item" onclick="quickLogin('admin')">
+                <span class="role-pill admin">Admin</span>
+                <div class="drop-info">
+                  <strong>Admin Officer</strong>
+                  <small>admin@railway.gov.in</small>
+                </div>
+              </button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item seed-action" onclick="triggerSeedData()">
+                <span>🌱 Re-seed Demo DB</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="dropdown notification-wrapper">
+            <button class="icon-btn" id="notif-btn" onclick="toggleDropdown('notif-dropdown')" title="Notifications">
+              <span class="bell-icon">🔔</span>
+              <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+            </button>
+            <div class="dropdown-menu notif-menu" id="notif-dropdown">
+              <div class="notif-header">
+                <h4>System Notifications</h4>
+                <button class="link-btn" onclick="markAllNotificationsRead()">Mark all read</button>
+              </div>
+              <div class="notif-list" id="notif-list">
+                <div class="empty-state-sm">No new notifications</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile / Auth Button -->
+          <div id="auth-actions">
+            <button class="btn btn-primary btn-sm" onclick="openAuthModal('login')" id="login-btn">
+              Login / Sign Up
+            </button>
+            
+            <div class="user-pill" id="user-profile-pill" style="display:none;">
+              <div class="user-avatar" id="nav-user-avatar">U</div>
+              <div class="user-meta">
+                <span class="user-name" id="nav-user-name">User</span>
+                <span class="user-role-badge" id="nav-user-role">Passenger</span>
+              </div>
+              <button class="logout-btn" onclick="logoutUser()" title="Logout">✕</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- ─── MAIN CONTENT AREA ─────────────────────────────────────────── -->
+    <main class="main-container">
+      
+      <!-- ================================================================ -->
+      <!-- TAB 1: SEARCH & BOOKING                                          -->
+      <!-- ================================================================ -->
+      <section id="booking-tab" class="tab-content active">
+        
+        <!-- Hero Search Section -->
+        <div class="hero-search-card">
+          <div class="hero-header">
+            <div class="hero-badge">🚆 Indian Railways Smart Booking Portal</div>
+            <h1 class="hero-title">Book Train Tickets, Check Live Seats & Fares</h1>
+            <p class="hero-subtitle">Instant reservation with dynamic seat allocation, tatkal & general quotas, and PNR generation.</p>
+          </div>
+
+          <form id="train-search-form" class="search-form" onsubmit="handleTrainSearch(event)">
+            <div class="search-grid">
+              
+              <!-- From Station -->
+              <div class="form-group station-input-wrap">
+                <label class="form-label" for="from-station">
+                  <span class="input-icon">🟢</span> From Station
+                </label>
+                <div class="custom-select-wrap">
+                  <select id="from-station" class="form-input custom-select" required>
+                    <option value="">Select origin station</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Swap Button -->
+              <div class="swap-btn-wrap">
+                <button type="button" class="swap-btn" onclick="swapStations()" title="Swap Stations">
+                  ⇄
+                </button>
+              </div>
+
+              <!-- To Station -->
+              <div class="form-group station-input-wrap">
+                <label class="form-label" for="to-station">
+                  <span class="input-icon">🔴</span> To Station
+                </label>
+                <div class="custom-select-wrap">
+                  <select id="to-station" class="form-input custom-select" required>
+                    <option value="">Select destination station</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Date Picker -->
+              <div class="form-group">
+                <label class="form-label" for="journey-date">
+                  <span class="input-icon">📅</span> Journey Date
+                </label>
+                <input type="date" id="journey-date" class="form-input" required />
+              </div>
+
+              <!-- Class Filter -->
+              <div class="form-group">
+                <label class="form-label" for="class-filter">
+                  <span class="input-icon">💺</span> Class
+                </label>
+                <select id="class-filter" class="form-input custom-select">
+                  <option value="">All Classes</option>
+                  <option value="1A">1A — AC First Class</option>
+                  <option value="2A">2A — AC 2 Tier</option>
+                  <option value="3A" selected>3A — AC 3 Tier</option>
+                  <option value="SL">SL — Sleeper</option>
+                  <option value="GN">GN — General Unreserved</option>
+                </select>
+              </div>
+
+              <!-- Submit -->
+              <div class="form-group search-btn-wrap">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary btn-block search-submit-btn">
+                  <span>Search Trains</span>
+                  <span class="arrow-right">→</span>
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Popular Routes Quick Pills -->
+            <div class="quick-routes">
+              <span class="quick-label">⚡ Popular Routes:</span>
+              <button type="button" class="route-pill" onclick="setQuickRoute('NDLS', 'CSTM')">New Delhi (NDLS) ⇄ Mumbai (CSTM)</button>
+              <button type="button" class="route-pill" onclick="setQuickRoute('NDLS', 'PNBE')">New Delhi (NDLS) ⇄ Patna (PNBE)</button>
+              <button type="button" class="route-pill" onclick="setQuickRoute('HWH', 'SBC')">Howrah (HWH) ⇄ Bengaluru (SBC)</button>
+              <button type="button" class="route-pill" onclick="setQuickRoute('NDLS', 'MAS')">New Delhi (NDLS) ⇄ Chennai (MAS)</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Train Search Results Section -->
+        <div class="search-results-section" id="trains-section">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title" id="results-title">Available Trains</h2>
+              <p class="section-subtitle" id="results-subtitle">Showing all operational trains with real-time class availability</p>
+            </div>
+            <div class="filter-controls">
+              <select id="sort-trains" class="form-input form-input-sm" onchange="renderTrainsList()">
+                <option value="departure">Sort: Earliest Departure</option>
+                <option value="duration">Sort: Fastest Duration</option>
+                <option value="name">Sort: Train Name</option>
+              </select>
+              <button class="btn btn-glass btn-sm" onclick="loadAllTrains()">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <!-- Trains Cards Grid -->
+          <div id="trains-list" class="trains-grid">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 2: LIVE RADAR / REAL-TIME SIMULATION                        -->
+      <!-- ================================================================ -->
+      <section id="tracking-tab" class="tab-content">
+        <div class="radar-header">
+          <div>
+            <div class="hero-badge">📡 Real-Time Telemetry Simulation</div>
+            <h2 class="section-title">Live Train Position & Delay Tracker</h2>
+            <p class="section-subtitle">Live simulated GPS calculation comparing actual wall-clock time against scheduled station halts.</p>
+          </div>
+          <div class="radar-selector">
+            <select id="radar-train-select" class="form-input custom-select" onchange="loadTrainLiveStatus(this.value)">
+              <option value="">Select Train to Track...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Radar Display Board -->
+        <div id="radar-display" class="radar-board">
+          <div class="radar-empty-state">
+            <div class="radar-icon-pulse">🛰️</div>
+            <h3>Select an active train above to begin live telemetry tracking</h3>
+            <p>Simulates current speed, next station ETA, halt durations, and platform allocations.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 3: PNR STATUS & ENQUIRY                                      -->
+      <!-- ================================================================ -->
+      <section id="pnr-tab" class="tab-content">
+        <div class="pnr-lookup-card">
+          <div class="pnr-header">
+            <div class="hero-badge">🎟️ Passenger Name Record</div>
+            <h2 class="section-title">Check PNR Status & Manage Ticket</h2>
+            <p class="section-subtitle">Enter your 10-character PNR to view real-time confirmation status, coach berth allotment, or cancel booking.</p>
+          </div>
+
+          <form id="pnr-search-form" class="pnr-form" onsubmit="handlePNRSearch(event)">
+            <div class="pnr-input-wrap">
+              <span class="pnr-prefix-icon">#</span>
+              <input type="text" id="pnr-input" class="pnr-input" placeholder="e.g. PNRVQSTSXX" maxlength="11" required />
+              <button type="submit" class="btn btn-primary pnr-btn">
+                <span>Check Status</span>
+                <span>→</span>
+              </button>
+            </div>
+            <div class="sample-pnr-hints" id="sample-pnr-box">
+              <span>Quick Test PNR:</span>
+              <button type="button" class="hint-pnr-btn" id="sample-pnr-btn" onclick="useSamplePNR(this.innerText)">Loading...</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- PNR Result Display Container -->
+        <div id="pnr-result-container" class="pnr-result-wrap" style="display: none;">
+          <!-- Dynamically populated e-ticket -->
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 4: MY BOOKINGS & JOURNEY HISTORY                            -->
+      <!-- ================================================================ -->
+      <section id="my-bookings-tab" class="tab-content">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">My Bookings & Journeys</h2>
+            <p class="section-subtitle">View your confirmed e-tickets, download journey summary, and track refund statuses.</p>
+          </div>
+          <div class="booking-tabs-nav">
+            <button class="pill-tab active" onclick="switchBookingSubTab('upcoming')">Upcoming & Active</button>
+            <button class="pill-tab" onclick="switchBookingSubTab('history')">Journey History</button>
+            <button class="pill-tab" onclick="switchBookingSubTab('cancellations')">Cancellations & Refunds</button>
+          </div>
+        </div>
+
+        <!-- Bookings List Container -->
+        <div id="my-bookings-list" class="bookings-grid">
+          <div class="empty-state">
+            <div class="empty-icon">🎟️</div>
+            <h3>No bookings found</h3>
+            <p>Login to your account or search trains to book your first journey!</p>
+            <button class="btn btn-primary btn-sm" onclick="switchTab('booking-tab')">Search Trains</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 5: PASSENGER DIRECTORY                                      -->
+      <!-- ================================================================ -->
+      <section id="passengers-tab" class="tab-content">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Saved Travellers Master List</h2>
+            <p class="section-subtitle">Manage frequent traveller profiles for one-click fast checkout during booking.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddPassengerModal()">
+            <span>+ Add Passenger</span>
+          </button>
+        </div>
+
+        <div id="passengers-list" class="passengers-grid">
+          <!-- Dynamically loaded -->
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 6: ADMIN & OPERATIONS CONTROL HUB                            -->
+      <!-- ================================================================ -->
+      <section id="admin-tab" class="tab-content">
+        <div class="admin-header-panel">
+          <div>
+            <div class="hero-badge admin-badge">⚡ Operations Command Center</div>
+            <h2 class="section-title">Railway System Intelligence & Analytics</h2>
+            <p class="section-subtitle">Aggregated system metrics using MongoDB $group, $lookup pipelines, fleet management, and refund approvals.</p>
+          </div>
+          <div class="admin-actions-bar">
+            <button class="btn btn-glass btn-sm" onclick="loadAdminDashboard()">🔄 Refresh Stats</button>
+            <button class="btn btn-primary btn-sm" onclick="openAddTrainModal()">+ Add New Train</button>
+            <button class="btn btn-glass btn-sm" onclick="openAddStationModal()">+ Add Station</button>
+            <button class="btn btn-accent btn-sm" onclick="openBroadcastModal()">📢 Broadcast Alert</button>
+          </div>
+        </div>
+
+        <!-- KPI Metrics Grid -->
+        <div class="kpi-grid" id="admin-kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon blue">🎫</div>
+            <div class="kpi-content">
+              <div class="kpi-label">Total Bookings</div>
+              <div class="kpi-value" id="kpi-bookings">--</div>
+              <div class="kpi-trend positive">Active in system</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon green">💰</div>
+            <div class="kpi-content">
+              <div class="kpi-label">Gross Revenue</div>
+              <div class="kpi-value" id="kpi-revenue">₹0</div>
+              <div class="kpi-trend positive">Via UPI / Cards / NetBanking</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon purple">🚆</div>
+            <div class="kpi-content">
+              <div class="kpi-label">Active Fleet</div>
+              <div class="kpi-value" id="kpi-trains">--</div>
+              <div class="kpi-trend">Express & High-Speed</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon orange">👥</div>
+            <div class="kpi-content">
+              <div class="kpi-label">Registered Users</div>
+              <div class="kpi-value" id="kpi-users">--</div>
+              <div class="kpi-trend">Passengers & Staff</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Sub-panels -->
+        <div class="admin-grid-layout">
+          
+          <!-- Revenue Analytics Table -->
+          <div class="admin-card">
+            <div class="card-header">
+              <h3>Revenue by Travel Class ($group pipeline)</h3>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="data-table" id="admin-class-revenue-table">
+                  <thead>
+                    <tr>
+                      <th>Class</th>
+                      <th>Bookings</th>
+                      <th>Passengers</th>
+                      <th>Total Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody id="class-revenue-tbody">
+                    <tr><td colspan="4" class="text-center">Loading analytics...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fleet Management Table -->
+          <div class="admin-card">
+            <div class="card-header">
+              <h3>Train Fleet & Operational Status</h3>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="data-table" id="admin-fleet-table">
+                  <thead>
+                    <tr>
+                      <th>Train</th>
+                      <th>Route</th>
+                      <th>Classes</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-fleet-tbody">
+                    <tr><td colspan="5" class="text-center">Loading trains...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Refund & Cancellation Processing -->
+          <div class="admin-card full-width">
+            <div class="card-header">
+              <h3>Cancellation & Refund Queue</h3>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="data-table" id="admin-cancellations-table">
+                  <thead>
+                    <tr>
+                      <th>PNR</th>
+                      <th>Passenger</th>
+                      <th>Fare Paid</th>
+                      <th>Deduction</th>
+                      <th>Refund Amount</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-cancellations-tbody">
+                    <tr><td colspan="7" class="text-center">No pending refund requests</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ─── FOOTER ─────────────────────────────────────────────────────── -->
+    <footer class="app-footer">
+      <div class="footer-container">
+        <div class="footer-left">
+          <span>🚆 <strong>RailPulse Pro</strong> &copy; 2026. Smart Railway Operations & Passenger Platform.</span>
+        </div>
+        <div class="footer-right">
+          <span class="status-indicator">
+            <span class="pulse-dot"></span> Backend API: <strong>Connected</strong> (Port 4000)
+          </span>
+          <span class="sep">•</span>
+          <a href="/api/health" target="_blank" class="footer-link">API Health</a>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODALS                                                               -->
+  <!-- ==================================================================== -->
+
+  <!-- 1. AUTH MODAL (LOGIN / REGISTER) -->
+  <div class="modal-overlay" id="auth-modal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">Welcome to RailPulse</h3>
+        <button class="modal-close" onclick="closeModal('auth-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Toggle Switcher -->
+        <div class="auth-toggle">
+          <button class="auth-toggle-btn active" id="toggle-login" onclick="setAuthMode('login')">Login</button>
+          <button class="auth-toggle-btn" id="toggle-register" onclick="setAuthMode('register')">Register</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="login-email" class="form-input" placeholder="e.g. rahul@gmail.com" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" style="display: none;" onsubmit="handleRegister(event)">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="reg-name" class="form-input" placeholder="e.g. Rahul Sharma" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="e.g. rahul@gmail.com" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Phone (10 Digits)</label>
+              <input type="tel" id="reg-phone" class="form-input" placeholder="9876543210" pattern="[6-9][0-9]{9}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Role</label>
+              <select id="reg-role" class="form-input custom-select">
+                <option value="passenger">Passenger</option>
+                <option value="staff">Station Staff</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="Min 8 chars, 1 Upper, 1 Lower, 1 Digit, 1 Special" required />
+            <small class="form-hint">E.g. <code>Password@123</code></small>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. BOOKING MODAL -->
+  <div class="modal-overlay" id="booking-modal" style="display: none;">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3 id="book-modal-title">Book Train Journey</h3>
+          <p class="modal-subtitle" id="book-modal-subtitle">Configure passengers and confirm seat reservation</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('booking-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Train Summary Card -->
+        <div class="booking-train-summary" id="booking-train-summary">
+          <!-- Populated dynamically -->
+        </div>
+
+        <form id="create-booking-form" onsubmit="handleCreateBooking(event)">
+          
+          <!-- Passenger Addition Container -->
+          <div class="passengers-booking-section">
+            <div class="section-subheading">
+              <h4>Passenger Details (Max 6)</h4>
+              <button type="button" class="btn btn-glass btn-xs" onclick="addPassengerRow()">+ Add Another</button>
+            </div>
+            
+            <div id="booking-passengers-container" class="booking-passengers-list">
+              <!-- Row 1 Default -->
+            </div>
+          </div>
+
+          <!-- Fare Breakdown Card -->
+          <div class="fare-calculation-card">
+            <div class="fare-row">
+              <span>Base Fare (<span id="fare-calc-seats">1</span> Seat @ ₹<span id="fare-calc-rate">0</span>):</span>
+              <strong id="fare-calc-base">₹0</strong>
+            </div>
+            <div class="fare-row">
+              <span>GST & Railway Surcharge (5%):</span>
+              <span id="fare-calc-tax">₹0</span>
+            </div>
+            <div class="fare-row">
+              <span>IRCTC Convenience Fee:</span>
+              <span id="fare-calc-fee">₹30</span>
+            </div>
+            <div class="fare-divider"></div>
+            <div class="fare-row total">
+              <span>Total Payable Amount:</span>
+              <strong class="total-price" id="fare-calc-total">₹0</strong>
+            </div>
+          </div>
+
+          <!-- Payment Mode Mock -->
+          <div class="payment-mode-box">
+            <span class="pay-title">Payment Method:</span>
+            <div class="pay-options">
+              <label class="pay-option active">
+                <input type="radio" name="pay_mode" value="UPI" checked />
+                <span>⚡ Instant UPI</span>
+              </label>
+              <label class="pay-option">
+                <input type="radio" name="pay_mode" value="Credit/Debit Card" />
+                <span>💳 Card</span>
+              </label>
+              <label class="pay-option">
+                <input type="radio" name="pay_mode" value="Net Banking" />
+                <span>🏛️ Net Banking</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-glass" onclick="closeModal('booking-modal')">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-lg" id="confirm-booking-btn">
+              <span>Pay & Confirm Ticket</span>
+              <span>🔒</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ADD / EDIT PASSENGER MODAL -->
+  <div class="modal-overlay" id="passenger-modal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="passenger-modal-title">Add Saved Passenger</h3>
+        <button class="modal-close" onclick="closeModal('passenger-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="passenger-form" onsubmit="handleSavePassenger(event)">
+          <input type="hidden" id="pass-id" />
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="pass-name" class="form-input" placeholder="e.g. Priya Sharma" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Age</label>
+              <input type="number" id="pass-age" class="form-input" min="1" max="120" placeholder="28" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gender</label>
+              <select id="pass-gender" class="form-input custom-select" required>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ID Type</label>
+              <select id="pass-idtype" class="form-input custom-select" required>
+                <option value="Aadhaar">Aadhaar</option>
+                <option value="PAN">PAN</option>
+                <option value="Passport">Passport</option>
+                <option value="Voter ID">Voter ID</option>
+                <option value="Driving License">Driving License</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ID Number</label>
+              <input type="text" id="pass-idnumber" class="form-input" placeholder="e.g. 5432-XXXX-8901" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number (Optional)</label>
+            <input type="tel" id="pass-phone" class="form-input" placeholder="9876543210" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save Passenger</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ADD NEW TRAIN MODAL (ADMIN) -->
+  <div class="modal-overlay" id="add-train-modal" style="display: none;">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>Add New Train to Fleet</h3>
+        <button class="modal-close" onclick="closeModal('add-train-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="add-train-form" onsubmit="handleCreateTrain(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Train Number (5 Digits)</label>
+              <input type="text" id="new-train-no" class="form-input" placeholder="12424" pattern="\d{5}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Train Name</label>
+              <input type="text" id="new-train-name" class="form-input" placeholder="Dibrugarh Rajdhani" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <select id="new-train-type" class="form-input custom-select">
+                <option value="Superfast">Superfast</option>
+                <option value="Rajdhani">Rajdhani</option>
+                <option value="Shatabdi">Shatabdi</option>
+                <option value="Express">Express</option>
+                <option value="Intercity">Intercity</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Origin Station Code</label>
+              <input type="text" id="new-train-src-code" class="form-input" placeholder="NDLS" uppercase required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Origin Station Name</label>
+              <input type="text" id="new-train-src-name" class="form-input" placeholder="New Delhi" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Departure Time</label>
+              <input type="time" id="new-train-dep" class="form-input" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Dest Station Code</label>
+              <input type="text" id="new-train-dst-code" class="form-input" placeholder="HWH" uppercase required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dest Station Name</label>
+              <input type="text" id="new-train-dst-name" class="form-input" placeholder="Howrah Junction" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Arrival Time</label>
+              <input type="time" id="new-train-arr" class="form-input" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Total Distance (km)</label>
+              <input type="number" id="new-train-dist" class="form-input" placeholder="1450" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duration</label>
+              <input type="text" id="new-train-dur" class="form-input" placeholder="17h 15m" required />
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Deploy Train to Operations</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. ADD STATION MODAL (ADMIN) -->
+  <div class="modal-overlay" id="add-station-modal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Add New Station</h3>
+        <button class="modal-close" onclick="closeModal('add-station-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="add-station-form" onsubmit="handleCreateStation(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Station Code</label>
+              <input type="text" id="stn-code" class="form-input" placeholder="GKP" maxlength="5" uppercase required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Station Name</label>
+              <input type="text" id="stn-name" class="form-input" placeholder="Gorakhpur Junction" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" id="stn-city" class="form-input" placeholder="Gorakhpur" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" id="stn-state" class="form-input" placeholder="Uttar Pradesh" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Zone</label>
+              <input type="text" id="stn-zone" class="form-input" placeholder="North Eastern Railway" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Platforms</label>
+              <input type="number" id="stn-platforms" class="form-input" min="1" max="50" value="10" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save Station</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. BROADCAST NOTIFICATION MODAL (ADMIN) -->
+  <div class="modal-overlay" id="broadcast-modal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>📢 Broadcast Passenger Alert</h3>
+        <button class="modal-close" onclick="closeModal('broadcast-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="broadcast-form" onsubmit="handleBroadcastNotification(event)">
+          <div class="form-group">
+            <label class="form-label">Alert Title</label>
+            <input type="text" id="bc-title" class="form-input" placeholder="Fog Alert & Schedule Update" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Alert Message</label>
+            <textarea id="bc-message" class="form-input" rows="3" placeholder="Trains running in Northern Railway may experience 15-30 min delays due to dense fog." required></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notification Type</label>
+            <select id="bc-type" class="form-input custom-select">
+              <option value="general">General Notice</option>
+              <option value="train_delayed">Train Delay Alert</option>
+              <option value="train_cancelled">Cancellation Notice</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-accent btn-block">Send Broadcast to All Users</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="app.js"></script>
+</body>
+</html>
