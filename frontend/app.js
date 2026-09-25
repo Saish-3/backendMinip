@@ -71,6 +71,15 @@ async function apiRequest(endpoint, options = {}) {
 
     const data = await res.json();
     if (!res.ok) {
+      if (res.status === 401 && endpoint !== "/auth/login") {
+        state.token = null;
+        state.user = null;
+        localStorage.removeItem("railpulse_token");
+        localStorage.removeItem("railpulse_user");
+        updateAuthUI();
+        openAuthModal("login");
+        showToast("Session expired or database changed. Please sign in.", "info");
+      }
       throw new Error(data.message || `Request failed with status ${res.status}`);
     }
     return data;
