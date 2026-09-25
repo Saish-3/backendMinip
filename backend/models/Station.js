@@ -2,30 +2,22 @@ const mongoose = require("mongoose");
 
 const stationSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, "Station name is required"],
-      trim: true,
-    },
-    code: {
-      type: String,
-      required: [true, "Station code is required"],
-      unique: true,
-      uppercase: true,
-      trim: true,
-    },
-    city:  { type: String, required: [true, "City is required"] },
-    state: { type: String, required: [true, "State is required"] },
-    zone:  { type: String },                          // e.g. "Central", "Northern"
-    platforms:  { type: Number, default: 1 },
+    name: { type: String, trim: true },
+    stationName: { type: String, trim: true },
+    code: { type: String, uppercase: true, trim: true },
+    stationCode: { type: String, uppercase: true, trim: true },
+    city: { type: String },
+    state: { type: String },
+    zone: { type: String, default: "Indian Railways" },
+    platforms: { type: Number, default: 1 },
     isJunction: { type: Boolean, default: false },
-    facilities: [{ type: String }],                   // ["Parking", "WiFi", "Food"]
+    facilities: [{ type: String }],
     coordinates: {
       lat: { type: Number },
       lng: { type: Number },
     },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 module.exports = mongoose.model("Station", stationSchema);

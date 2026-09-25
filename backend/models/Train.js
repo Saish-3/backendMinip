@@ -4,10 +4,10 @@ const mongoose = require("mongoose");
 
 const stopSchema = new mongoose.Schema(
   {
-    stationCode: { type: String, required: true, uppercase: true },
-    stationName: { type: String, required: true },
+    stationCode: { type: String, uppercase: true },
+    stationName: { type: String },
     arrivalTime:  { type: String, default: "--" },   // HH:MM (-- for source)
-    departureTime:{ type: String, required: true },   // HH:MM
+    departureTime:{ type: String, default: "--" },   // HH:MM
     day:          { type: Number, default: 1 },        // 1 = day 1 of journey
     distance:     { type: Number, default: 0 },        // km from source
     haltDuration: { type: Number, default: 2 },        // minutes
@@ -18,9 +18,9 @@ const stopSchema = new mongoose.Schema(
 
 const classConfigSchema = new mongoose.Schema(
   {
-    className:  { type: String, enum: ["SL", "3A", "2A", "1A", "GN"], required: true },
+    className:  { type: String, enum: ["SL", "3A", "2A", "1A", "GN", "CC", "2S"], required: true },
     totalSeats: { type: Number, default: 0 },
-    farePerSeat:{ type: Number, required: true },       // base fare in ₹
+    farePerSeat:{ type: Number, default: 500 },       // base fare in ₹
   },
   { _id: false }
 );
@@ -29,50 +29,32 @@ const classConfigSchema = new mongoose.Schema(
 
 const trainSchema = new mongoose.Schema(
   {
-    trainNumber: {
-      type: String,
-      required: [true, "Train number is required"],
-      unique: true,
-      uppercase: true,
-      match: [/^\d{5}$/, "Train number must be exactly 5 digits"],
-    },
-    trainName: {
-      type: String,
-      required: [true, "Train name is required"],
-      trim: true,
-    },
-    type: {
-      type: String,
-      enum: ["Express", "Superfast", "Rajdhani", "Shatabdi", "Intercity", "Local"],
-      default: "Express",
-    },
-    source: {
-      code: { type: String, required: true, uppercase: true },
-      name: { type: String, required: true },
-    },
-    destination: {
-      code: { type: String, required: true, uppercase: true },
-      name: { type: String, required: true },
-    },
-    departureTime: { type: String, required: true },   // HH:MM from source
-    arrivalTime:   { type: String, required: true },   // HH:MM at destination
-    duration:      { type: String },                    // e.g. "12h 30m"
-    totalDistance: { type: Number, required: true },    // km
+    trainNumber: { type: String, uppercase: true },
+    trainNo:     { type: mongoose.Schema.Types.Mixed },
+    trainName:   { type: String, required: true, trim: true },
+    type:        { type: String, default: "Express" },
+    source:      { type: mongoose.Schema.Types.Mixed }, // string (e.g. "Delhi") or object { code, name }
+    destination: { type: mongoose.Schema.Types.Mixed }, // string (e.g. "Mumbai") or object { code, name }
+    departureTime: { type: String, default: "08:00" },
+    arrivalTime:   { type: String, default: "20:00" },
+    duration:      { type: String, default: "12h 00m" },
+    totalDistance: { type: Number, default: 1000 },
     runningDays: {
       type: [String],
-      enum: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       default: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     },
     stops:     [stopSchema],
     classes:   [classConfigSchema],
-    amenities: [{ type: String }],                     // ["WiFi", "Pantry", "AC"]
+    totalSeats:     { type: Number },
+    availableSeats: { type: Number },
+    amenities: [{ type: String }],
     status: {
       type: String,
       enum: ["active", "cancelled", "maintenance"],
       default: "active",
     },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 module.exports = mongoose.model("Train", trainSchema);

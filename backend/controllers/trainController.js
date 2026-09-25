@@ -5,24 +5,104 @@ const User         = require("../models/User");
 const { getPaginationData, getSkip } = require("../utils/pagination");
 const { simulateTrainStatus }        = require("../utils/trainStatusSimulator");
 
+// Helper to normalize train object for frontend
+const normalizeTrain = (t) => {
+  const trainNumber = t.trainNumber || (t.trainNo ? String(t.trainNo) : "12001");
+  const trainName = t.trainName || "Express Train";
+  
+  let sourceObj = { code: "SRC", name: "Origin" };
+  if (typeof t.source === "string") {
+    sourceObj = { code: t.source.substring(0, 4).toUpperCase(), name: t.source };
+  } else if (typeof t.source === "object" && t.source) {
+    sourceObj = {
+      code: t.source.code || (t.source.name ? t.source.name.substring(0, 4).toUpperCase() : "SRC"),
+      name: t.source.name || t.source.code || "Origin",
+    };
+  }
+
+  let destObj = { code: "DST", name: "Destination" };
+  if (typeof t.destination === "string") {
+    destObj = { code: t.destination.substring(0, 4).toUpperCase(), name: t.destination };
+  } else if (typeof t.destination === "object" && t.destination) {
+    destObj = {
+      code: t.destination.code || (t.destination.name ? t.destination.name.substring(0, 4).toUpperCase() : "DST"),
+      name: t.destination.name || t.destination.code || "Destination",
+    };
+  }
+
+  const classes = (t.classes && t.classes.length > 0) ? t.classes : [
+    { className: "1A", totalSeats: Math.max(10, Math.round((t.totalSeats || 500) * 0.1)), farePerSeat: 3200 },
+    { className: "2A", totalSeats: Math.max(20, Math.round((t.totalSeats || 500) * 0.2)), farePerSeat: 2100 },
+    { className: "3A", totalSeats: t.availableSeats || Math.max(50, Math.round((t.totalSeats || 500) * 0.4)), farePerSeat: 1450 },
+    { className: "SL", totalSeats: Math.max(80, Math.round((t.totalSeats || 500) * 0.3)), farePerSeat: 550 },
+  ];
+
+  const stops = (t.stops && t.stops.length > 0) ? t.stops : [
+    { stationCode: sourceObj.code, stationName: sourceObj.name, arrivalTime: "--", departureTime: t.departureTime || "08:00", day: 1, platform: 1 },
+    { stationCode: destObj.code, stationName: destObj.name, arrivalTime: t.arrivalTime || "20:00", departureTime: "--", day: 1, platform: 2 },
+  ];
+
+  return {
+    ...t,
+    trainNumber,
+    trainName,
+    type: t.type || "Express",
+    source: sourceObj,
+    destination: destObj,
+    departureTime: t.departureTime || "08:00",
+    arrivalTime: t.arrivalTime || "20:00",
+    duration: t.duration || "12h 00m",
+    totalDistance: t.totalDistance || 950,
+    runningDays: t.runningDays || ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    classes,
+    stops,
+    status: t.status || "active",
+  };
+};
+
 // ─── GET all trains (search / filter / paginate) ──────────────────────────────
 // @route  GET /api/trains
 // @access Public
 const getAllTrains = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, from, to, type, status = "active", sort = "-createdAt" } = req.query;
+    const { page = 1, limit = 50, from, to, type, status, sort = "-createdAt" } = req.query;
 
     const filter = {};
-    if (from)   filter["source.code"]      = from.toUpperCase();
-    if (to)     filter["destination.code"] = to.toUpperCase();
-    if (type)   filter.type   = type;
     if (status) filter.status = status;
+    if (type)   filter.type   = type;
 
-    const total  = await Train.countDocuments(filter);
-    const trains = await Train.find(filter)
-      .sort(sort)
+    if (from) {
+      filter.$or = filter.$or || [];
+      const fromRegex = new RegExp(from, "i");
+      filter.$or.push(
+        { "source.code": { $regex: fromRegex } },
+        { "source.name": { $regex: fromRegex } },
+        { source: { $regex: fromRegex } }
+      );
+    }
+
+    if (to) {
+      const toRegex = new RegExp(to, "i");
+      const toOr = [
+        { "destination.code": { $regex: toRegex } },
+        { "destination.name": { $regex: toRegex } },
+        { destination: { $regex: toRegex } },
+      ];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: toOr }];
+        delete filter.$or;
+      } else {
+        filter.$or = toOr;
+      }
+    }
+
+    const total     = await Train.countDocuments(filter);
+    const rawTrains = await Train.find(filter)
       .skip(getSkip(page, limit))
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
+
+    const trains = rawTrains.map(normalizeTrain);
 
     res.json({ success: true, pagination: getPaginationData(page, limit, total), trains });
   } catch (err) {
@@ -34,9 +114,9 @@ const getAllTrains = async (req, res, next) => {
 // @access Public
 const getTrainById = async (req, res, next) => {
   try {
-    const train = await Train.findById(req.params.id);
-    if (!train) return res.status(404).json({ success: false, message: "Train not found" });
-    res.json({ success: true, train });
+    const rawTrain = await Train.findById(req.params.id).lean();
+    if (!rawTrain) return res.status(404).json({ success: false, message: "Train not found" });
+    res.json({ success: true, train: normalizeTrain(rawTrain) });
   } catch (err) {
     next(err);
   }

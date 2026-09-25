@@ -159,7 +159,10 @@ async function loadStations() {
 
     let optionsHtml = `<option value="">Select station...</option>`;
     state.stations.forEach((stn) => {
-      optionsHtml += `<option value="${stn.code}">${stn.name} (${stn.code}) - ${stn.city}</option>`;
+      const name = stn.name || stn.stationName || stn.city || "Station";
+      const code = stn.code || stn.stationCode || (stn.city ? stn.city.substring(0, 4).toUpperCase() : "STN");
+      const city = stn.city || name;
+      optionsHtml += `<option value="${code}">${name} (${code}) - ${city}</option>`;
     });
 
     fromSelect.innerHTML = optionsHtml;
@@ -201,14 +204,23 @@ async function loadAllTrains() {
 async function handleTrainSearch(e) {
   if (e && e.preventDefault) e.preventDefault();
 
-  const from = document.getElementById("from-station")?.value;
-  const to = document.getElementById("to-station")?.value;
+  const fromCode = document.getElementById("from-station")?.value;
+  const toCode = document.getElementById("to-station")?.value;
   const date = document.getElementById("journey-date")?.value;
   const travelClass = document.getElementById("class-filter")?.value;
 
+  const fromStn = state.stations.find((s) => (s.code === fromCode || s.stationCode === fromCode));
+  const toStn = state.stations.find((s) => (s.code === toCode || s.stationCode === toCode));
+
   let query = `/trains?`;
-  if (from) query += `from=${encodeURIComponent(from)}&`;
-  if (to) query += `to=${encodeURIComponent(to)}&`;
+  if (fromCode) {
+    const fromSearch = fromStn?.city || fromStn?.name || fromCode;
+    query += `from=${encodeURIComponent(fromSearch)}&`;
+  }
+  if (toCode) {
+    const toSearch = toStn?.city || toStn?.name || toCode;
+    query += `to=${encodeURIComponent(toSearch)}&`;
+  }
   if (date) query += `date=${encodeURIComponent(date)}&`;
   if (travelClass) query += `travelClass=${encodeURIComponent(travelClass)}&`;
 

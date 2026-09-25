@@ -19,10 +19,24 @@ const getAllStations = async (req, res, next) => {
     if (zone)  filter.zone  = zone;
 
     const total    = await Station.countDocuments(filter);
-    const stations = await Station.find(filter)
-      .sort({ name: 1 })
+    const rawStations = await Station.find(filter)
       .skip(getSkip(page, limit))
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
+
+    const stations = rawStations.map((stn) => {
+      const name = stn.name || stn.stationName || stn.city || "Unknown Station";
+      const code = stn.code || stn.stationCode || (stn.city ? stn.city.substring(0, 4).toUpperCase() : "STN");
+      return {
+        ...stn,
+        name,
+        code,
+        city: stn.city || name,
+        state: stn.state || "",
+        zone: stn.zone || "Indian Railways",
+        platforms: stn.platforms || 1,
+      };
+    });
 
     res.json({ success: true, pagination: getPaginationData(page, limit, total), stations });
   } catch (err) {
